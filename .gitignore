@@ -1,0 +1,8 @@
+lib
+*jar
+build
+build.xml
+lib
+manifest.mf
+test
+.DS_Store
