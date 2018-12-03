@@ -117,6 +117,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
         double x5 = volume.getVoxel((int) Math.ceil(x), (int) Math.ceil(y), (int) Math.floor(z));
         double x6 = volume.getVoxel((int) Math.floor(x), (int) Math.ceil(y), (int) Math.ceil(z));
         double x7 = volume.getVoxel((int) Math.ceil(x), (int) Math.ceil(y), (int) Math.ceil(z));
+   
         
         double voxelVal = (1 - alpha)*(1 - beta)*(1 - gamma)*x0 + alpha*(1 - beta)*(1 - gamma)*x1
                 + (1 - alpha)*beta*(1 - gamma)*x2 + alpha*beta*(1 - gamma)*x3
@@ -124,6 +125,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
                 + (1 - alpha)*beta*gamma*x6 + alpha*beta*gamma*x7;
         
         return (short)voxelVal;
+
     }
 
     void slicer(double[] viewMatrix) {
@@ -289,7 +291,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
             for (int i = 0; i < image.getWidth(); i++) {
 
                 colors = new ArrayList<TFColor>();
-                for (int k = 0; k < volume.getDimZ() - 1; k+=1) {
+                for (int k = 0; k < volume.getDimZ() - 1; k+=15) {
                     pixelCoord[0] = uVec[0] * (i - imageCenter) + vVec[0] * (j - imageCenter)
                             + viewVec[0] * (k - volumeCenter[0]) + volumeCenter[0];
                     pixelCoord[1] = uVec[1] * (i - imageCenter) + vVec[1] * (j - imageCenter)
@@ -319,17 +321,11 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
                 int c_blue = voxelColor.b <= 1.0 ? (int) Math.floor(voxelColor.b * 255) : 255;
                 int pixelColor = (c_alpha << 24) | (c_red << 16) | (c_green << 8) | c_blue;
                 image.setRGB(i, j, pixelColor);
-//                int count = 0;
-//                if (count%2000 == 0) {
-//                    System.out.println(pixelColor);
-//                }
             }
         }
     }
     
-//    copydy popydy
-    public TFColor getColorInterpolated(double[] coord) {
-
+    public boolean alreadyInteger(double[] coord) {
         double x = coord[0];
         double y = coord[1];
         double z = coord[2];
@@ -339,43 +335,55 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
         double[] zDim = {Math.floor(z), Math.ceil(z)};
 
         if (xDim[0] == xDim[1] && yDim[0] == yDim[1] && zDim[0] == zDim[1]) {
+            return true;
+        }
+        return false;
+    }
+    
+    public TFColor getColorInterpolated(double[] coord) {
+        if (alreadyInteger(coord)) {
             return tFunc.getColor(getVoxel(coord));
         }
-        double xd = x - xDim[0] / (xDim[1] - xDim[0]);
-        double yd = y - yDim[0] / (yDim[1] - yDim[0]);
-        double zd = z - zDim[0] / (zDim[1] - zDim[0]);
+        
+        double x = coord[0];
+        double y = coord[1];
+        double z = coord[2];
 
+        double[] xDim = {Math.floor(x), Math.ceil(x)};
+        double[] yDim = {Math.floor(y), Math.ceil(y)};
+        double[] zDim = {Math.floor(z), Math.ceil(z)};
+       
         TFColor[] colors = new TFColor[8];
-        int voxelIndex = 0;
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 2; j++) {
                 for (int k = 0; k < 2; k++) {
-                    double[] voxelCoord = {xDim[i], yDim[j], zDim[k]};
-                    colors[voxelIndex] = tFunc.getColor(getVoxel(voxelCoord));
-
-                    voxelIndex++;
+                    for (int index = 0; index < colors.length; index++) {
+                        double[] voxelCoord = {xDim[i], yDim[j], zDim[k]};
+                        colors[index] = tFunc.getColor(getVoxel(voxelCoord));
+                    }
                 }
             }
         }
-        double[][] colorsMatrix = getColorComponents(colors);
+        
+        double[][] colorsNeighboringVoxels = getColorValues(colors);
 
-        double[] red = colorsMatrix[0];
-        double[] green = colorsMatrix[1];
-        double[] blue = colorsMatrix[2];
-        double[] alpha = colorsMatrix[3];
+        double[] red = colorsNeighboringVoxels[0];
+        double[] green = colorsNeighboringVoxels[1];
+        double[] blue = colorsNeighboringVoxels[2];
+        double[] alpha = colorsNeighboringVoxels[3];
 
         TFColor result = new TFColor(
-                interpolate(red, xd, yd, zd),
-                interpolate(green, xd, yd, zd),
-                interpolate(blue, xd, yd, zd),
-                interpolate(alpha, xd, yd, zd));
+                getColorInterpolated(red, coord),
+                getColorInterpolated(green, coord),
+                getColorInterpolated(blue, coord),
+                getColorInterpolated(alpha, coord));
         return result;
     }
-//    Copydy popydy
-    public double[][] getColorComponents(TFColor[] colors) {
+    
+    public double[][] getColorValues(TFColor[] colors) {
         double[] red = new double[colors.length];
         double[] green = new double[colors.length];
-        double[] blue = new double[colors.length];
+        double[] blue = new double[colors.length];  
         double[] alpha = new double[colors.length];
 
         for (int i = 0; i < colors.length; i++) {
@@ -387,9 +395,19 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
         return new double[][]{red, green, blue, alpha};
     }
     
-//    copydy popydy
-    public double interpolate(double[] colors, double xd, double yd, double zd) {
+    public double getColorInterpolated(double[] colors, double[] coord) {
+        double x = coord[0];
+        double y = coord[1];
+        double z = coord[2];
 
+        double[] xDim = {Math.floor(x), Math.ceil(x)};
+        double[] yDim = {Math.floor(y), Math.ceil(y)};
+        double[] zDim = {Math.floor(z), Math.ceil(z)};
+        
+        double xd = x - xDim[0] / (xDim[1] - xDim[0]);
+        double yd = y - yDim[0] / (yDim[1] - yDim[0]);
+        double zd = z - zDim[0] / (zDim[1] - zDim[0]);
+        
         double C00 = colors[0] * (1 - xd) + colors[4] * xd;
         double C01 = colors[2] * (1 - xd) + colors[6] * xd;
         double C10 = colors[1] * (1 - xd) + colors[5] * xd;
@@ -490,7 +508,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
         gl.glGetDoublev(GL2.GL_MODELVIEW_MATRIX, viewMatrix, 0);
 
         long startTime = System.currentTimeMillis();
-        
+//        
 //        slicer(viewMatrix);
 //        mip(viewMatrix);
         composite(viewMatrix);
