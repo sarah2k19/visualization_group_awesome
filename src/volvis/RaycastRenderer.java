@@ -109,9 +109,9 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
         double beta, beta_expression;
         double gamma, gamma_expression;
 
-        alpha_expression = ((x - Math.ceil(x))/(Math.ceil(x) - Math.floor(x)));
-        beta_expression = ((y - Math.ceil(y))/(Math.ceil(y) - Math.floor(y)));
-        gamma_expression = ((z - Math.ceil(z))/(Math.ceil(z) - Math.floor(z)));
+        alpha_expression = x - Math.floor(x)/(Math.ceil(x) - Math.floor(x));
+        beta_expression = y - Math.floor(y)/(Math.ceil(y) - Math.floor(y));
+        gamma_expression = z - Math.floor(z)/(Math.ceil(z) - Math.floor(z));
 
         alpha = (!Double.isNaN((alpha_expression))) ? alpha_expression : 0.0;
         beta = (!Double.isNaN(beta_expression)) ? beta_expression : 0.0;
